@@ -1,55 +1,52 @@
-# SonyRemote Android
+# Sony Remote (Android)
 
-Controle remoto para a TV Sony Bravia **KDL-42W655A** em Kotlin. Usa infravermelho (SIRC) como padrão e Wi-Fi (IRCC) como fallback.
+App Android em Kotlin e Jetpack Compose para controlar a TV Sony Bravia **KDL-42W655A**. Funciona sozinho no celular, sem servidor: envia os comandos por Wi-Fi (IRCC) ou, se o celular tiver emissor infravermelho, por IR (SIRC).
 
-Referência de layout e protótipo funcional: [sony_remote_tv_web](https://github.com/marcio-morais/sony_remote_tv_web).
+O protótipo web que serviu de referência de layout fica em [sony_remote_tv_web](https://github.com/marcio-morais/sony_remote_tv_web).
 
-## Estado atual
+## Instalar no celular
 
-Este repositório contém a **camada de controle** (ainda sem tela). Os arquivos estão em `app/src/main/java/app/sonyremote/tv/`:
+Cada push na `main` gera um APK pelo GitHub Actions. No celular, abra o link abaixo, baixe e instale (o Android vai pedir para permitir a instalação de apps desta fonte):
 
-| Arquivo | Função |
-| --- | --- |
-| `SonyKey.kt` | Teclas, com o código IRCC (Wi-Fi) e o comando SIRC (IR) |
-| `SonyIrRemote.kt` | Gera e transmite o quadro SIRC de 12 bits pelo emissor IR do celular |
-| `SonyTvClient.kt` | Envia comandos IRCC por HTTP (OkHttp) |
-| `TvTransport.kt` | Interface comum, `IrTransport`, `WifiTransport` e `TvRemote` (IR primeiro, Wi-Fi como fallback) |
-
-Ainda não há `build.gradle`, `MainActivity` nem tela em Compose: o próximo passo é criar o projeto no Android Studio (pacote `app.sonyremote`) e copiar estes fontes.
-
-## Configuração do projeto
-
-`app/build.gradle.kts`:
-
-```kotlin
-dependencies {
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-}
+```
+https://github.com/marcio-morais/sony_remote_tv/releases/latest/download/SonyRemote.apk
 ```
 
-`AndroidManifest.xml`:
+Se o repositório for renomeado, o GitHub redireciona o link antigo, mas vale atualizar o endereço acima.
 
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.TRANSMIT_IR" />
-<uses-feature android:name="android.hardware.consumerir" android:required="false" />
+Também dá para baixar o APK em **Actions > Build APK > SonyRemote-apk** na página do repositório.
 
-<application android:usesCleartextTraffic="true" ...>
+## O que o app faz
+
+Duas abas, que também mudam com um arrasto de dedo: **Controle** (Entrada, Home, SEN, Liga, setas e OK, Mudo, volume, canal, Opções, Voltar, Sair e Jump) e **Números** (0 a 9, teclas coloridas e mídia). Segurar setas, volume ou canal repete o comando. A engrenagem abre a conexão: busca automática da TV na rede (SSDP e varredura da faixa local), IP, chave PSK, o modo de envio (Automático, Infravermelho ou Wi-Fi) e o histórico dos últimos comandos. O nome da TV aparece no topo.
+
+No modo Automático o app usa IR quando o celular tem emissor e a tecla tem código SIRC, e Wi-Fi no resto.
+
+## Configurar a TV
+
+Configurações > Rede > Controle IP, com autenticação "Normal e Pre-Shared Key" e a mesma chave informada no app (padrão `0000`). Os nomes dos menus variam entre gerações.
+
+## Estrutura
+
+```
+app/src/main/java/app/sonyremote/tv/
+  SonyKey.kt            teclas com código IRCC (Wi-Fi) e SIRC (IR)
+  SonyTvClient.kt       envio IRCC por HTTP (OkHttp)
+  SonyIrRemote.kt       quadro SIRC de 12 bits no emissor IR
+  TvRemote.kt           escolhe IR ou Wi-Fi conforme o modo
+  TvDiscovery.kt        busca da TV (SSDP + varredura /24)
+  WifiNetworkHelper.kt  fixa o tráfego na rede Wi-Fi (mesmo com dados móveis ligados)
+  Settings.kt           IP, nome, PSK e modo salvos no DataStore
+  ui/                   ViewModel e telas em Compose
+.github/workflows/build.yml   gera o APK a cada push
 ```
 
-## Uso
+## Compilar localmente
 
-```kotlin
-val remote = TvRemote(
-    primary = IrTransport(SonyIrRemote(context)),
-    fallback = WifiTransport(SonyTvClient(tvIp = "192.168.0.50", preSharedKey = "0000")),
-)
-scope.launch { remote.send(SonyKey.VOLUME_UP) }
-```
+Abra a pasta no Android Studio, ou rode `./gradlew assembleDebug` (JDK 17). O APK sai em `app/build/outputs/apk/debug/`.
 
-## Observações
+## Pendências
 
-- IR exige um celular com emissor infravermelho (`ConsumerIrManager`). Sem ele, o fallback para Wi-Fi assume.
-- IR não retorna confirmação de entrega, então o fallback só dispara quando o celular não tem emissor ou a tecla não tem comando SIRC.
-- Os comandos SIRC das teclas de navegação foram derivados do payload IRCC e precisam ser validados na TV real.
-- A TV de 2013 pode exigir registro com PIN em vez de PSK. Use o "Testar conexão" do projeto web para descobrir.
+- Os códigos de Guia, SEN, Opções, Sair, Jump, números, cores e mídia ainda precisam ser validados na TV real.
+- Os comandos IR das teclas de navegação foram derivados do código IRCC e não foram testados.
+- O APK é assinado com a chave de debug; para publicar na Play Store seria preciso uma chave própria.
