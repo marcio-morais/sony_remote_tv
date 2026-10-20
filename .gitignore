@@ -1,0 +1,21 @@
+.DS_Store
+
+# web
+__pycache__/
+*.pyc
+.wrangler/
+node_modules/
+
+# android
+*.iml
+.gradle/
+local.properties
+.idea/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
