@@ -50,6 +50,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -87,7 +88,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -580,12 +581,19 @@ private fun SettingsSheet(state: UiState, viewModel: RemoteViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Conexão", style = MaterialTheme.typography.titleLarge, color = Ink)
-            val context = LocalContext.current
-            val version = remember {
-                runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
-                    .getOrNull().orEmpty()
+            if (state.version.isNotBlank()) {
+                Text("Versão ${state.version}", color = Muted, fontSize = 13.sp)
             }
-            if (version.isNotBlank()) Text("Versão $version", color = Muted, fontSize = 13.sp)
+            OutlinedButton(onClick = viewModel::checkUpdate, enabled = !state.checkingUpdate) {
+                Text(if (state.checkingUpdate) "Verificando..." else "Verificar atualização")
+            }
+            state.update?.let { update ->
+                Text(update.message, color = Ink, fontSize = 13.sp)
+                if (update.linkLabel != null && update.linkUrl != null) {
+                    val uriHandler = LocalUriHandler.current
+                    Button(onClick = { uriHandler.openUri(update.linkUrl) }) { Text(update.linkLabel) }
+                }
+            }
 
             OutlinedButton(onClick = viewModel::discover, enabled = !state.discovering) {
                 Text(if (state.discovering) "Buscando..." else "Buscar TV na rede")

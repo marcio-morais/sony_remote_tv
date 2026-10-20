@@ -40,7 +40,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: latest
-          name: SonyRemote (latest build)
+          name: SonyRemote 0.2.${{ github.run_number }}
           body: Latest build from `main` (${{ github.sha }}). Debug-signed APK, install it directly on the phone.
           artifacts: SonyRemote.apk
           allowUpdates: true

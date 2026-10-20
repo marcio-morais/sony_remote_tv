@@ -12,6 +12,7 @@ import app.sonyremote.tv.TvDevice
 import app.sonyremote.tv.TvDiscovery
 import app.sonyremote.tv.TvRemote
 import app.sonyremote.tv.TvSettings
+import app.sonyremote.tv.UpdateChecker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +24,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+
+/** Outcome of "Verificar atualização": a message and, optionally, a link to open. */
+data class UpdateUi(val message: String, val linkLabel: String? = null, val linkUrl: String? = null)
 
 enum class Tone { IDLE, OK, WARN, ERROR }
 
@@ -38,6 +42,9 @@ data class UiState(
     val log: List<LogEntry> = emptyList(),
     val showSettings: Boolean = false,
     val irAvailable: Boolean = false,
+    val version: String = "",
+    val checkingUpdate: Boolean = false,
+    val update: UpdateUi? = null,
 )
 
 class RemoteViewModel(application: Application) : AndroidViewModel(application) {
@@ -51,7 +58,14 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     private val discovery = TvDiscovery(application, http)
     private val clock = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
-    private val _state = MutableStateFlow(UiState(irAvailable = remote.irAvailable))
+    private val updates = UpdateChecker(http)
+    private val installedVersion = runCatching {
+        application.packageManager.getPackageInfo(application.packageName, 0).versionName
+    }.getOrNull().orEmpty()
+
+    private val _state = MutableStateFlow(
+        UiState(irAvailable = remote.irAvailable, version = installedVersion),
+    )
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
@@ -201,6 +215,28 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun setMode(mode: TransportMode) = updateSettings { it.copy(mode = mode) }
 
     fun setMac(value: String) = updateSettings { it.copy(mac = value.trim()) }
+
+    fun checkUpdate() {
+        if (_state.value.checkingUpdate) return
+        viewModelScope.launch {
+            _state.update { it.copy(checkingUpdate = true, update = null) }
+            val info = updates.check(installedVersion)
+            val result = when {
+                info == null -> UpdateUi(
+                    "Não foi possível verificar agora. Abra a página no GitHub para conferir.",
+                    "Abrir no GitHub",
+                    UpdateChecker.RELEASES_URL,
+                )
+                info.isNewer -> UpdateUi(
+                    "Versão ${info.latestVersion} disponível.",
+                    "Baixar versão nova",
+                    UpdateChecker.APK_URL,
+                )
+                else -> UpdateUi("Você está na versão mais recente (${info.latestVersion}).")
+            }
+            _state.update { it.copy(checkingUpdate = false, update = result) }
+        }
+    }
 
     fun openSettings() = _state.update { it.copy(showSettings = true) }
 
