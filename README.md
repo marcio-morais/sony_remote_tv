@@ -1,20 +1,55 @@
-# Sony Remote TV
+# SonyRemote Android
 
-Controle remoto para a TV Sony Bravia **KDL-42W655A** (e outras Bravia com IP Control), em duas frentes:
+Controle remoto para a TV Sony Bravia **KDL-42W655A** em Kotlin. Usa infravermelho (SIRC) como padrão e Wi-Fi (IRCC) como fallback.
 
-| Pasta | O que é |
+Referência de layout e protótipo funcional: [sony_remote_tv_web](https://github.com/marcio-morais/sony_remote_tv_web).
+
+## Estado atual
+
+Este repositório contém a **camada de controle** (ainda sem tela). Os arquivos estão em `app/src/main/java/app/sonyremote/tv/`:
+
+| Arquivo | Função |
 | --- | --- |
-| [`web/`](web) | MVP web (HTML/CSS/JS puros) + `server.py`, uma ponte local que repassa os comandos para a TV por Wi-Fi (IRCC) |
-| [`android/`](android) | Camada de controle em Kotlin: infravermelho (SIRC) como padrão e Wi-Fi (IRCC) como fallback |
+| `SonyKey.kt` | Teclas, com o código IRCC (Wi-Fi) e o comando SIRC (IR) |
+| `SonyIrRemote.kt` | Gera e transmite o quadro SIRC de 12 bits pelo emissor IR do celular |
+| `SonyTvClient.kt` | Envia comandos IRCC por HTTP (OkHttp) |
+| `TvTransport.kt` | Interface comum, `IrTransport`, `WifiTransport` e `TvRemote` (IR primeiro, Wi-Fi como fallback) |
 
-## Como a TV é controlada
+Ainda não há `build.gradle`, `MainActivity` nem tela em Compose: o próximo passo é criar o projeto no Android Studio (pacote `app.sonyremote`) e copiar estes fontes.
 
-- **Wi-Fi (IRCC):** requisição HTTP SOAP para `http://IP-da-TV/sony/IRCC`, o mesmo princípio do app Video & TV SideView. Funciona com a TV ligada e na mesma rede.
-- **Infravermelho (SIRC):** quadro de 12 bits a 40 kHz pelo emissor IR do celular. Liga a TV do standby e não depende de rede.
+## Configuração do projeto
 
-## Por onde começar
+`app/build.gradle.kts`:
 
-1. Rode o protótipo web (`web/README.md`) e use **Testar conexão** para descobrir como a TV autentica (PSK ou PIN).
-2. Com isso definido, evolua o app Android (`android/README.md`).
+```kotlin
+dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+}
+```
 
-Nenhum backend na nuvem é necessário: a TV fica na rede local e só um dispositivo dentro dela consegue enviar comandos.
+`AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.TRANSMIT_IR" />
+<uses-feature android:name="android.hardware.consumerir" android:required="false" />
+
+<application android:usesCleartextTraffic="true" ...>
+```
+
+## Uso
+
+```kotlin
+val remote = TvRemote(
+    primary = IrTransport(SonyIrRemote(context)),
+    fallback = WifiTransport(SonyTvClient(tvIp = "192.168.0.50", preSharedKey = "0000")),
+)
+scope.launch { remote.send(SonyKey.VOLUME_UP) }
+```
+
+## Observações
+
+- IR exige um celular com emissor infravermelho (`ConsumerIrManager`). Sem ele, o fallback para Wi-Fi assume.
+- IR não retorna confirmação de entrega, então o fallback só dispara quando o celular não tem emissor ou a tecla não tem comando SIRC.
+- Os comandos SIRC das teclas de navegação foram derivados do payload IRCC e precisam ser validados na TV real.
+- A TV de 2013 pode exigir registro com PIN em vez de PSK. Use o "Testar conexão" do projeto web para descobrir.
