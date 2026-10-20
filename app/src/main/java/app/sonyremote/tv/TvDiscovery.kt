@@ -20,7 +20,7 @@ import java.net.SocketTimeoutException
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
-data class TvDevice(val ip: String, val name: String, val model: String)
+data class TvDevice(val ip: String, val name: String, val model: String, val mac: String = "")
 
 data class DiscoveryResult(val devices: List<TvDevice>, val onWifi: Boolean)
 
@@ -156,6 +156,7 @@ class TvDiscovery(
             ip = ip,
             name = xmlField(description, "friendlyName").ifBlank { "Sony TV" },
             model = xmlField(description, "modelName"),
+            mac = TvPower.macFromUdn(xmlField(description, "UDN")),
         )
     }
 

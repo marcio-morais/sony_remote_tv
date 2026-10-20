@@ -12,6 +12,7 @@ package app.sonyremote.tv
  */
 enum class SonyKey(val irccCode: String, val sircCommand: Int? = null) {
     POWER("AAAAAQAAAAEAAAAVAw==", 21),
+    POWER_OFF("AAAAAQAAAAEAAAAvAw==", 47),
     VOLUME_UP("AAAAAQAAAAEAAAASAw==", 18),
     VOLUME_DOWN("AAAAAQAAAAEAAAATAw==", 19),
     MUTE("AAAAAQAAAAEAAAAUAw==", 20),

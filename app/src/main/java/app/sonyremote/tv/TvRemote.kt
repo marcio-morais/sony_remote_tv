@@ -17,7 +17,12 @@ class TvRemote(
     private val http: OkHttpClient,
     private val ir: SonyIrRemote,
 ) {
+    private val power = TvPower(context, http)
+
     val irAvailable: Boolean get() = ir.isAvailable
+
+    /** Wakes the TV if it is in standby (used when the app opens). Null = nothing was needed. */
+    suspend fun wakeIfStandby(settings: TvSettings): SendResult? = power.wakeIfStandby(settings)
 
     fun routeFor(key: SonyKey, mode: TransportMode): Route = when (mode) {
         TransportMode.WIFI -> Route.WIFI
@@ -29,7 +34,8 @@ class TvRemote(
     suspend fun send(key: SonyKey, settings: TvSettings): SendResult =
         when (routeFor(key, settings.mode)) {
             Route.IR -> sendIr(key)
-            Route.WIFI -> sendWifi(key, settings)
+            // Over Wi-Fi the power key is off when the TV is on and Wake-on-LAN when in standby
+            Route.WIFI -> if (key == SonyKey.POWER) power.toggle(settings) else sendWifi(key, settings)
         }
 
     private suspend fun sendIr(key: SonyKey): SendResult = withContext(Dispatchers.Default) {

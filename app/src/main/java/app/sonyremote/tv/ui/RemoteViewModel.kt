@@ -142,8 +142,36 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** Opening the app wakes the TV when it is in standby (at most once a minute). */
+    fun wakeIfStandby() {
+        val now = System.currentTimeMillis()
+        if (now - lastWakeAt < WAKE_COOLDOWN_MS) return
+        lastWakeAt = now
+        viewModelScope.launch {
+            val settings = store.settings.first()
+            if (settings.ip.isBlank()) return@launch
+            val result = remote.wakeIfStandby(settings) ?: return@launch
+            _state.update {
+                if (result.ok) {
+                    it.copy(status = "Ligando a TV...", tone = Tone.WARN)
+                } else {
+                    it.copy(
+                        status = "TV em standby: informe o MAC da TV na engrenagem para ligar ao abrir.",
+                        tone = Tone.WARN,
+                    )
+                }
+            }
+        }
+    }
+
     fun choose(device: TvDevice) {
-        updateSettings { it.copy(ip = device.ip, name = device.name) }
+        updateSettings {
+            it.copy(
+                ip = device.ip,
+                name = device.name,
+                mac = device.mac.ifBlank { if (it.ip == device.ip) it.mac else "" },
+            )
+        }
         _state.update {
             it.copy(
                 devices = emptyList(),
@@ -172,6 +200,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setMode(mode: TransportMode) = updateSettings { it.copy(mode = mode) }
 
+    fun setMac(value: String) = updateSettings { it.copy(mac = value.trim()) }
+
     fun openSettings() = _state.update { it.copy(showSettings = true) }
 
     fun closeSettings() = _state.update { it.copy(showSettings = false) }
@@ -182,7 +212,10 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { store.save(updated) }
     }
 
+    private var lastWakeAt = 0L
+
     private companion object {
         const val LOG_LIMIT = 8
+        const val WAKE_COOLDOWN_MS = 60_000L
     }
 }

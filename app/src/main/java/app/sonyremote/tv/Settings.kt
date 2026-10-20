@@ -21,6 +21,8 @@ data class TvSettings(
     val name: String = "",
     val psk: String = "0000",
     val mode: TransportMode = TransportMode.AUTO,
+    /** TV MAC address, needed to wake it from standby (Wake-on-LAN). */
+    val mac: String = "",
 )
 
 class SettingsStore(private val context: Context) {
@@ -33,6 +35,7 @@ class SettingsStore(private val context: Context) {
             mode = prefs[MODE]
                 ?.let { stored -> TransportMode.entries.firstOrNull { it.name == stored } }
                 ?: TransportMode.AUTO,
+            mac = prefs[MAC].orEmpty(),
         )
     }
 
@@ -42,6 +45,7 @@ class SettingsStore(private val context: Context) {
             prefs[NAME] = value.name
             prefs[PSK] = value.psk
             prefs[MODE] = value.mode.name
+            prefs[MAC] = value.mac
         }
     }
 
@@ -50,5 +54,6 @@ class SettingsStore(private val context: Context) {
         val NAME = stringPreferencesKey("name")
         val PSK = stringPreferencesKey("psk")
         val MODE = stringPreferencesKey("mode")
+        val MAC = stringPreferencesKey("mac")
     }
 }

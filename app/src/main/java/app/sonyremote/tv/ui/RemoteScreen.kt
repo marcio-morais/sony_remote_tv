@@ -87,6 +87,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.sonyremote.tv.SonyKey
@@ -116,6 +118,9 @@ fun RemoteApp(viewModel: RemoteViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
+
+    // Opening (or coming back to) the app wakes the TV if it is in standby
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.wakeIfStandby() }
 
     Scaffold(
         containerColor = Background,
@@ -611,6 +616,15 @@ private fun SettingsSheet(state: UiState, viewModel: RemoteViewModel) {
                     modifier = Modifier.weight(1f),
                 )
             }
+
+            OutlinedTextField(
+                value = state.settings.mac,
+                onValueChange = viewModel::setMac,
+                label = { Text("MAC da TV (para ligar)") },
+                supportingText = { Text("Ex.: A4:17:31:A6:52:42. Usado para ligar a TV em standby.") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Text("Como enviar os comandos", fontWeight = FontWeight.SemiBold, color = Ink)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
