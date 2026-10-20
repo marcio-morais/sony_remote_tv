@@ -12,8 +12,10 @@ android {
         applicationId = "app.sonyremote.tv"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI passes -PbuildNumber=<run number>, so every APK shows which build it is
+        val buildNumber = (project.findProperty("buildNumber") as String?)?.toIntOrNull() ?: 0
+        versionCode = maxOf(buildNumber, 1)
+        versionName = "0.2.$buildNumber"
     }
 
     buildTypes {

@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -579,6 +580,12 @@ private fun SettingsSheet(state: UiState, viewModel: RemoteViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Conexão", style = MaterialTheme.typography.titleLarge, color = Ink)
+            val context = LocalContext.current
+            val version = remember {
+                runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
+                    .getOrNull().orEmpty()
+            }
+            if (version.isNotBlank()) Text("Versão $version", color = Muted, fontSize = 13.sp)
 
             OutlinedButton(onClick = viewModel::discover, enabled = !state.discovering) {
                 Text(if (state.discovering) "Buscando..." else "Buscar TV na rede")
